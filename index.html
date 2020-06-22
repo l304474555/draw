@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>商品陈列图</title>
+    <!--<meta name="viewport" content="width=device-width,initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no,minimal-ui">-->
+    <link href="css/vcm.css?123" rel="stylesheet" type="text/css" />
+    <link href="css/common.css" rel="stylesheet" type="text/css" />
+    <link href="css/index.css" rel="stylesheet" type="text/css" />
+    <style>
+        .flex1 {
+            flex: 1
+        }
+
+        .td {
+            border: 1px solid #666;
+            padding: 4px;
+        }
+    </style>
+    <script src="js/mobile-drag-drop.js"></script>
+    <script src="js/vue@2.6.10.js"></script>
+    <script>
+        // options are optional ;)
+        MobileDragDrop.polyfill({
+            // use this to make use of the scroll behaviour
+            dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride
+        });
+    </script>
+
+</head>
+        <body>
+            <div id="ele" @click="copyObj.show = false">
+                <template>
+                    <div style="position:fixed;left:0;top:50%;transform:translateY(-50%);height:400px;width:230px;border:1px solid;" :style="tempScale?'width:230px':'width:120px'">
+                        <div style="text-align:center;padding:10px;font-size:14px;border-bottom:1px solid;position:relative" :style="'text-align:'+(tempScale?'center':'left')">
+                            <font>临时放置栏</font>
+                            <font v-if="drawTempList.length" style="position:absolute;right:10px" @click="deleteTemp('', '', 'all')">清空</font>
+                        </div>
+                        <div @drop="dropTemp" @dragover="dragover" @dragEnter="dragenter" style="height:calc(100% - 40px);overflow-y:scroll;">
+                            <div v-for="(item, index) of drawTempList" style="text-align:center;margin:10px 0;display:flex;align-items:center;">
+                                <div style="flex:1;display:flex;align-items:center"
+                                     draggable="true"
+                                     @dragstart="dragstartTemp(item,index)"
+                                     @dragEnter="dragenter"
+                                     @dragover="dragover">
+                                    <img :src="item.Imgurl" style="width:60px;" />
+                                    <div style="margin:0 5px;flex:1" v-show="tempScale">{{item.GoodsName}}</div>
+                                </div>
+                                <div style="width:40px;text-align:center" @click="deleteTemp(item, index)">删除</div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <div style="position:fixed;right:20px;top:0px;">
+                    <template v-if="edit.isInEditing">
+                        <div @click="editChoose" style="margin-top:10px;center;padding:10px 20px;background:rgb(219,219,219)">{{edit.btnText}}</div>
+                    </template>
+                    <template v-if="isDrag">
+                        <div @click="saveDrag" style="margin-top:10px;text-align:center;padding:10px 20px;background:rgb(219,219,219)">
+                            批量保存
+                        </div>
+                        <div @click="cancelDrag" style="margin-top:10px;width:48px;text-align:center;padding:10px 20px;background:rgb(219,219,219)">
+                            取消
+                        </div>
+                    </template>
+                </div>
+
+                <template v-if="copyObj.show">
+                    <div v-show="copyObj.hasItem" @click="copyItem" :style="'position:fixed;left:'+copyObj.x+'px;top:'+copyObj.y+'px;width:48px;text-align:center;padding:10px 20px;background:rgb(219,219,219);z-index:9'">
+                        复制
+                    </div>
+                    <div v-if="copyObj.item" @click="pasteItem" :style="'position:fixed;left:'+copyObj.x+'px;top:'+ (copyObj.y + (copyObj.hasItem?36:0)) +'px;width:48px;text-align:center;padding:10px 20px;background:rgb(219,219,219);z-index:9'">
+                        黏贴
+                    </div>
+                </template>
+
+                <div style="display: flex;justify-content: center;height: 100%;">
+                    <div class="lsHG hide" id="bigbox" style="float: left; display: block;height:100%;margin-left: 100px;">
+                        <div class="hg-head" style="width: 399px;">
+                            <!--<img src="./images/top.jpg">-->
+                        </div>
+                        <div class="hg-content" style="height: 700px; width: 400px;">
+                            <div class="hg-left-lashou1" style="height: 684px;">
+                                <!--<img src="./images/lashou1.jpg" style="height:684px">-->
+                            </div>
+                            <div class="ta" style="width: 334px; height: 684px;">
+                                <ul class="resizableN" id="list" style="display:flex;flex-wrap:wrap;height:100%">
+
+                                    <div v-for="(item,index) of layerList" :style="'width:'+item.width" style="display:inline-block;" @dragover="dragover" @dragEnter="dragenter" @drop="drop(item,index)" @click="switchAddpop(item)">
+                                        <li draggable="true"
+                                            @touchstart="(e)=>gtouchstart(item,e)" @touchend="gtouchend"
+                                            @dragstart="dragstart(item,index)"
+                                            @dragEnter="dragenter"
+                                            @dragover="dragover"
+                                            @dragleave="dragleave"
+                                            @dragend="dragend"
+                                            @dragmove="dragmove"
+                                            style="height: 100%; cursor: pointer;border-right:0"
+                                            :key="item.index"
+                                            class="receive droppable">
+                                            <div class="product-img" style="width: 95%;height: calc(100% - 42px);text-align: center;top:0">
+                                                <div style="height:96%;position:relative;" :style="item._detail&&item._detail._IsScan?'border:solid 1px red':''">
+                                                    <img v-if="item._detail&&item._detail.Imgurl"
+                                                         :src="item._detail&&item._detail.Imgurl"
+                                                         onmouseover="this.className='htmer_img'"
+                                                         onmouseout="this.className='none'"
+                                                         style="max-width:100%;min-width:5px;max-height: 100%;position: absolute;bottom: 0;left:50%;transform: translateX(-50%);">
+                                                    <img v-if="item._detail&&item._detail.Imgurl==null"
+                                                         src="./images/no_picture.jpg"
+                                                         onmouseover="this.className='htmer_img'"
+                                                         onmouseout="this.className='none'"
+                                                         style="max-width:100%;min-width:5px;max-height: 100%;position: absolute;bottom: 0;left:50%;transform: translateX(-50%);">
+
+                                                    <!--编辑框-->
+                                                    <div @click="chooseItem(item)" v-if="edit.isInEditing && item._detail" style="position:absolute;bottom:0;left:0;width:100%;text-align:center;height:100%;">
+                                                        <img :src="item._detail._choosed?'./images/check_box.png':'./images/no_check_box.png'" width="20" style="position:absolute;right:0;bottom:0" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <p class="product-price" style="height:42px">
+                                                <font v-if="item._detail" style="display:block" :style="monthlyC(item)" @click.stop="">{{item._detail.MonthlySales|filterMonthSale}}</font>
+                                                <font v-if="item._detail" style="display:block" :style="qtyC(item)" @click.stop="openBaoHuo(item)">{{item._detail._qty|filterQty}}</font>
+                                                <font v-if="item._detail " style="display: block; background-color: rgb(224, 224, 224);height:14px" @click.stop="openBaoHuo(item)">
+													<template v-if="item._detail._BHChuli || item._detail._BHWeiChuli">{{(item._detail._BHChuli || 0) - (item._detail._BHWeiChuli || 0)}}[{{item._detail._BHWeiChuli || 0}}]</template>
+												</font>
+                                                <!--<div v-if="item._detail&&item._detail.RTLPRC">{{item._detail&&item._detail._qty}}<item._detail/div>-->
+                                            </p>
+                                        </li>
+                                    </div>
+                                </ul>
+                            </div>
+
+                            <!--<div class="hg-right" style="height: 684px;"><img src="./images/b_r.jpg" style="height:684px"></div>-->
+                        </div>
+                        <div class="hg-bottom" style="width: 400px;">
+                            <!--<img src="./images/bottom.jpg">-->
+                        </div>
+                    </div>
+                </div>
+
+                <div style="position: fixed;top:0;left:0;width:100%;height:100vh" v-if="isShowAdd">
+                    <template>
+                        <div style="background:rgba(0,0,0,0.5);width:100%;height:100vh" @click="switchAddpop"></div>
+                        <div style="position: fixed;top: 50%; left: 50%;transform:translate(-50%,-50%);background:#fff;padding:20px;min-width:250px;">
+                            <div style="font-size:18px;font-weight:550">选择</div>
+                            <div style="padding: 10px 0;">如何找到商品？</div>
+                            <div style="display:flex;padding-top:20px;justify-content:flex-end;color:rgb(245,71,130)">
+                                <div style="text-align:center" @click="addGoods('search')">搜索</div>
+                                <div style="text-align:center;margin-left:20px" @click="addGoods('scan')">扫码</div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <div v-if="showBaoHuo">
+                    <template>
+                        <div style="background:rgba(0,0,0,0.5);width:100%;height:100vh;position: fixed;top:0;left:0"></div>
+                        <div style="position: fixed;top: 33%; left: 50%;transform:translate(-50%,-50%);background:#fff;min-width:370px;max-width:50%;">
+                            <div style="font-size:14px;font-weight:550;padding:10px;background:rgb(203,203,203)">报货</div>
+                            <div style="padding: 0px 20px;">
+                                <div style="font-weight:550;font-size:18px;padding:10px 0 0 0">{{baohuoItem._detail.GoodsName}}</div>
+                                <div style="padding-top:10px;display:flex;">
+                                    <div style="width:50%">库存：{{baohuoItem._detail._qty || 0}}</div>
+                                    <div style="width:50%">在途：{{baohuoItem._detail.ztqty || 0}}</div>
+                                </div>
+                                <div style="padding-top:10px;display:flex;">
+                                    <div style="width:50%">已报货：{{baohuoItem._detail._BHChuli || 0}}</div>
+                                    <div style="width:50%">配货单位：{{baohuoItem._detail.Alcqty || 0}}</div>
+                                </div>
+                                <div style="padding-top:10px;display:flex;">
+                                    <div style="width:50%">单价：{{baohuoItem._detail.WHSPrc || 0}}</div>
+                                    <div style="width:50%;display:flex;">
+                                        <font>报货数量：</font>
+                                        <image src="./images/reduce.png" width="20" height="20" @click="changeBaoHuo('reduce')"></image>
+                                        <input v-model="baohuoItem._detail._BaoHuo" style="width:50px;text-align:center;margin:0 2px" type="number" />
+                                        <image src="./images/plus.png" width="20" height="20" @click="changeBaoHuo('add')"></image>
+                                    </div>
+                                </div>
+                                <div style="padding-top:10px;display:flex;">
+                                    <div style="width:50%">金额：{{(baohuoItem._detail.WHSPrc * baohuoItem._detail._BaoHuo).toFixed(2)}}</div>
+                                    <div style="width:50%">促销类型：{{baohuoItem._detail.PromotionsMode}}</div>
+                                </div>
+                                <div style="padding-top:10px;display:flex;">
+                                    <div style="width:50%">建议报货：{{baohuoItem._detail.JYBHL}}</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;padding:20px;justify-content:space-around;">
+                                <div style="text-align:center;padding:15px 40px;background:rgb(219,219,219)" @click="sureBaoHuo('cancel')">取消</div>
+                                <div style="text-align:center;padding:15px 40px;background:rgb(219,219,219)" @click="sureBaoHuo('sure')">提交</div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+
+                <div style="position: fixed;top:0;left:0;width:100%;height:100vh" v-if="showBaoHuoList">
+                    <template>
+                        <div style="background:rgba(0,0,0,0.5);width:100%;height:100vh"></div>
+                        <div style="position: fixed;top: 50%; left: 50%;transform:translate(-50%,-50%);background:#fff;min-width:400px;max-width:70%;">
+                            <div style="font-size:14px;font-weight:550;padding:10px;background:rgb(203,203,203)">确认提交</div>
+                            <div style="padding:10px;">您本次提交共有{{baohuoList.length}}个商品</div>
+                            <div style="padding: 0px 10px;">
+                                <div style="display:flex;border-top:1px solid #666;border-right:1px solid #666;border-left:1px solid #666;">
+                                    <div class="flex1 td">序号</div>
+                                    <div class="flex1 td">层数</div>
+                                    <div class="flex1 td">单元格</div>
+                                    <div class="td" style="width:130px;">商品名称</div>
+                                    <div class="flex1 td">报货数</div>
+                                    <div class="td" style="width:40px;"></div>
+                                </div>
+                                <div style="border-bottom:1px solid #666;border-right:1px solid #666;border-left:1px solid #666;max-height:200px;overflow-y:scroll">
+                                    <div v-for="(item, index) of baohuoList" :key="item._detail.GID" style="display:flex;">
+                                        <div class="flex1 td">{{index+1}}</div>
+                                        <div class="flex1 td">{{item.layer}}</div>
+                                        <div class="flex1 td">{{item.position}}</div>
+                                        <div class="td" style="width:130px;">{{item._detail.GoodsName}}</div>
+                                        <div class="flex1 td">{{item._detail._BaoHuo}}</div>
+                                        <div class="td" style="width:40px;"><img src="./images/reduce.png" width="20" style="vertical-align: -6px;" @click="deleBaoHuoListItem(item, index)" /></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display:flex;padding:20px;justify-content:space-around;">
+                                <div style="text-align:center;padding:15px 40px;background:rgb(219,219,219)" @click="sureBaoHuoList('cancel')">取消</div>
+                                <div style="text-align:center;padding:15px 40px;background:rgb(219,219,219)" @click="sureBaoHuoList('sure')">提交</div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+            </div>
+        </body>
+</html>
+<script src="js/jquery.js" type="text/javascript" charset="utf-8"></script>
+<script src="js/mintUI/index.js" type="text/javascript" charset="utf-8"></script>
+<link href="js/mintUI/style.css" rel="stylesheet" type="text/css" />
+<script src="js/main.js"></script>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>test</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no,minimal-ui">
+    <link href="css/vcm.css?123" rel="stylesheet" type="text/css" />
+    <link href="css/common.css" rel="stylesheet" type="text/css" />
+    <link href="css/index.css" rel="stylesheet" type="text/css" />
+    <style>
+        .flex1 {
+            flex:1
+        }
+        .td {
+            border:1px solid #666;
+            padding:4px;
+        }
+        @font-face {font-family: 'iconfont';
+            src: url('iconfont.eot');
+            src: url('iconfont.eot?#iefix') format('embedded-opentype'),
+            url('iconfont.woff') format('woff'),
+            url('iconfont.ttf') format('truetype'),
+            url('iconfont.svg#iconfont') format('svg');
+        }
+    </style>
+    <link href="//at.alicdn.com/t/font_1762633_yv62ew0n2f8.css" rel="stylesheet" type="text/css" />
+    <script src="js/mobile-drag-drop.js"></script>
+    <script src="js/vue@2.6.10.js"></script>
+    <script>
+        // options are optional ;)
+        MobileDragDrop.polyfill({
+            // use this to make use of the scroll behaviour
+            dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride
+        });
+    </script>
+    <body>
+        <div id="ele">
+            <i class="iconfont icon-liuyanpinglun"></i>
+            <div style="height:600px;overflow-y:scroll;">
+                <div v-for="i of 10" style="background:pink;text-align:center;padding:50px;margin: 30px 0;" class=" lazyload" lazyload>{{i | filterTime}}</div>
+                <div style="">
+                    <div v-for="i of 10" style="background:pink;text-align:center;padding:50px;margin: 30px 0;" class=" lazyload" lazyload>123</div>
+                </div>
+                <div style="height:50px">
+                    <div style="height:50px" :style="fixed?'position:fixed;top:0':''">吸顶</div>
+                </div>
+                <div v-for="i of list" style="background:pink;text-align:center;padding:50px;margin: 30px 0;" class=" lazyload" lazyload>123</div>
+                <div v-show="!loading" class="reference" style="background:#666"></div>
+
+            </div>
+			
+			
+			  <audio id="music" src="http://182.254.231.106:8001/mp3/huoban.mp3" ></audio>
+
+
+            <input placeholder="123asdfasd" @click="down" />
+            <!--<iframe src="http://myj-mimage.oss-cn-shenzhen.aliyuncs.com/MicroMallFileServer/Files/waimai/music/ChromeCore_1256_1.0.4.2.exe"></iframe>-->
+            <div @click="down"> 123</div>
+            <a href="http://myj-mimage.oss-cn-shenzhen.aliyuncs.com/MicroMallFileServer/Files/waimai/music/ChromeCore_1256_1.0.4.2.exe" title="我的博客" target="_blank">Welcome</a>
+        </div>
+    </body>
+</html>
+<style>
+    .scroll {
+         animation: op 1s ease;
+    }
+    @keyframes op {
+      from {
+        opacity: 0;
+        transform: translate(0px, 100px); 
+        transform:rotate(180deg);
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    input::-webkit-input-placeholder{
+        color: black;
+        -webkit-text-fill-color: black;
+    }
+</style>
+<script src="js/jquery.js" type="text/javascript" charset="utf-8"></script>
+<script type="text/javascript">
+    var timeOutEvent = '';
+    Vue.filter('filterTime', function (time) {
+        console.log(time)
+        return time + 1
+    })
+    var mainVue = new Vue({
+        el: '#ele',
+        data: {
+            fixed: false,
+            list: [1, 1, 1, 1, 1],
+            loading: false
+        },
+        created: function() {
+        },
+        mounted: function() {
+            var that = this
+            let box = document.querySelectorAll('div.lazyload')
+
+            let observer = new IntersectionObserver(entries => {
+                 console.log(entries);
+              entries.forEach(item => {
+                let tips = item.isIntersecting ? "进入了父元素的内部" : "离开了父元素的内部";
+                   if (item.isIntersecting) {
+                      item.target.classList.add("scroll"); // 增加show类名
+                      observer.unobserve(item.target); // 移除监听
+                    }
+              });
+            });
+            box.forEach(item => observer.observe(item)); // 监听多个box
+
+            let observerB = new IntersectionObserver(entries => {
+                console.log(entries);
+                if (entries[0].isIntersecting) {
+                    console.log('到底了');
+                    var a = [1,2,2,3,4,5]
+                    this.list = [...this.list, ...a]
+                    this.loading = true
+                    setTimeout(() => {
+                        this.loading = false
+                    },5000)
+                }
+                console.log(entries[0].boundingClientRect.top);
+                if (entries[0].boundingClientRect.top < 0) {
+                    this.fixed = true
+                } else {
+                    this.fixed = false
+                }
+             });
+            observerB.observe(document.querySelector('.reference'))
+
+
+            //observer.observe(box); // 监听一个box
+
+             var m = document.getElementById('music');
+                   m.play();//播放
+        },
+        methods: {
+            down: function () {
+                console.log(123)
+                //window.open('http://myj-mimage.oss-cn-shenzhen.aliyuncs.com/MicroMallFileServer/Files/waimai/music/ChromeCore_1256_1.0.4.2.exe', '_blank')
+                //window.open('ChromeCore_1256_1.0.4.2.exe', '_blank')
+            }
+        },
+        filters: {
+           
+        }
+    })
+
+</script>
